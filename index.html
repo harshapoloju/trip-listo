@@ -225,6 +225,7 @@ form.card.add{border-top:1px solid var(--line)}
   ];
   var BOOK=[
     {title:'Flights',rows:[['skyscanner','Skyscanner','Compare flight prices','https://www.skyscanner.com'],['gflights','Google Flights','Price calendar and tracking','https://www.google.com/travel/flights']]},
+    {title:'Train and bus',rows:[['omio','Omio','Trains, buses and flights across Europe and beyond','https://www.omio.com'],['trainline','Trainline','Train and coach tickets in the UK and Europe','https://www.thetrainline.com'],['amtrak','Amtrak','US train tickets','https://www.amtrak.com'],['flixbus','FlixBus','Low-cost intercity buses','https://www.flixbus.com']]},
     {title:'Stay',rows:[['booking','Booking.com','Hotels and apartments','https://www.booking.com'],['airbnb','Airbnb','Homes and cabins','https://www.airbnb.com'],['hostelworld','Hostelworld','Hostels and budget stays','https://www.hostelworld.com']]},
     {title:'Getting around',rows:[['rome2rio','Rome2Rio','Trains, buses and ferries between places','https://www.rome2rio.com'],['kayak-cars','Kayak car rental','Compare rental companies','https://www.kayak.com/cars'],['enterprise','Enterprise','Rent directly','https://www.enterprise.com'],['hertz','Hertz','Rent directly','https://www.hertz.com']]},
     {title:'Things to do',rows:[['ticketmaster','Ticketmaster','Concerts and shows','https://www.ticketmaster.com'],['luma','Luma','Local events and meetups','https://lu.ma'],['eventbrite','Eventbrite','Events and experiences','https://www.eventbrite.com'],['alltrails','AllTrails','Hiking routes','https://www.alltrails.com'],['getyourguide','GetYourGuide','Tours and activities','https://www.getyourguide.com']]}
@@ -250,7 +251,7 @@ form.card.add{border-top:1px solid var(--line)}
   function tplByKey(k){return allTpls().filter(function(t){return t.tpl===k})[0]}
   /* A list remembers your last edits (state.memory) so it comes back the way you left it. */
   function makeSection(t){var m=state&&state.memory&&state.memory[t.tpl];return {id:uid(),tpl:t.tpl,group:t.group,title:t.title,items:(Array.isArray(m)?m:t.items).map(it)}}
-  function blankTrip(){return {id:uid(),name:'',start:'',end:'',adults:2,kids:0,transport:'',interests:[],notes:'',booked:{},skip:{},created:Date.now(),archivedAt:null,progress:0,sections:[makeSection(builtin('essentials')),makeSection(builtin('home'))]}}
+  function blankTrip(){return {id:uid(),name:'',start:'',end:'',adults:2,kids:0,transport:'',interests:[],notes:'',booked:{},skip:{'g-train-and-bus':true},created:Date.now(),archivedAt:null,progress:0,sections:[makeSection(builtin('essentials')),makeSection(builtin('home'))]}}
   /* A new trip copies the choices of an earlier one. Ticks, bookings and dates start fresh. */
   function cloneTrip(src){
     var skip={};for(var k in src.skip)if(src.skip[k])skip[k]=true;
@@ -279,7 +280,7 @@ form.card.add{border-top:1px solid var(--line)}
       })};
   }
   function freshState(){
-    state={v:2,cur:null,trips:[],tab:'plan',edit:false,platforms:platformDefaults(),book:defaultBook(),interestOpts:defaultInterests(),memory:{},custom:[]};
+    state={v:2,bookV:2,cur:null,trips:[],tab:'plan',edit:false,platforms:platformDefaults(),book:defaultBook(),interestOpts:defaultInterests(),memory:{},custom:[]};
     var t=blankTrip();state.trips=[t];state.cur=t.id;return state;
   }
   function migrate(o){
@@ -295,6 +296,16 @@ form.card.add{border-top:1px solid var(--line)}
     s.cur=sid(o.cur);
     s.platforms=Array.isArray(o.platforms)?o.platforms.slice(0,30).map(function(p){p=(p&&typeof p==='object')?p:{};return {id:sid(p.id),name:str(p.name,60),url:str(p.url,500)}}):platformDefaults();
     s.book=Array.isArray(o.book)?o.book.slice(0,30).map(function(g){g=(g&&typeof g==='object')?g:{};return {id:sid(g.id),title:str(g.title,60),rows:(Array.isArray(g.rows)?g.rows:[]).slice(0,40).map(function(r){r=(r&&typeof r==='object')?r:{};return {id:sid(r.id),name:str(r.name,60),note:str(r.note,80),url:str(r.url,500)}})}}):defaultBook();
+    s.bookV=2;
+    /* Older saves have no Train and bus group: add it once, hidden for trips that are not by train. */
+    if(o.bookV!==2){
+      if(!s.book.some(function(g){return g.id==='g-train-and-bus'})){
+        var tg=defaultBook().filter(function(g){return g.id==='g-train-and-bus'})[0],fi=-1;
+        s.book.forEach(function(g,i){if(g.id==='g-flights')fi=i});
+        s.book.splice(fi+1,0,tg);
+      }
+      s.trips.forEach(function(t){if(t.transport!=='train')t.skip['g-train-and-bus']=true});
+    }
     s.interestOpts=Array.isArray(o.interestOpts)?o.interestOpts.slice(0,40).map(function(x){return str(x,40)}).filter(Boolean):defaultInterests();
     s.memory={};
     if(o.memory&&typeof o.memory==='object')Object.keys(o.memory).slice(0,200).forEach(function(k){
@@ -387,10 +398,10 @@ form.card.add{border-top:1px solid var(--line)}
     return {d:d,t:t};
   }
   /* Smart defaults: choices on the Plan tab switch off what the trip does not need. Everything can be switched back by hand. */
-  function grp(kind){return state.book.filter(function(g){return kind==='flights'?(g.id==='g-flights'||/flight/i.test(g.title)):(g.id==='g-stay'||/stay|hotel|lodging/i.test(g.title))})[0]}
+  function grp(kind){return state.book.filter(function(g){if(kind==='flights')return g.id==='g-flights'||/flight/i.test(g.title);if(kind==='transit')return g.id==='g-train-and-bus';return g.id==='g-stay'||/stay|hotel|lodging/i.test(g.title)})[0]}
   function sameDay(T){return !!(T.start&&T.end&&T.start===T.end)}
   function noFly(T){return T.transport==='drive'||T.transport==='train'}
-  function snapT(T){return {transport:T.transport,noFly:noFly(T),sameDay:sameDay(T),kids:T.kids>0}}
+  function snapT(T){return {train:T.transport==='train',transport:T.transport,noFly:noFly(T),sameDay:sameDay(T),kids:T.kids>0}}
   function setList(T,tpl,on,notes){
     var has=T.sections.filter(function(x){return x.tpl===tpl})[0],t=builtin(tpl);
     if(on&&!has){T.sections.push(makeSection(t));notes.push(t.title+' list added')}
@@ -405,12 +416,14 @@ form.card.add{border-top:1px solid var(--line)}
     var notes=[];
     if(noFly(T)!==before.noFly)setSkip(T,grp('flights'),noFly(T),'Flights',notes);
     if(T.transport!==before.transport){setList(T,'road',T.transport==='drive',notes);setList(T,'flying',T.transport==='fly',notes);setList(T,'transit',T.transport==='train',notes)}
+    if((T.transport==='train')!==before.train)setSkip(T,grp('transit'),T.transport!=='train','Train and bus',notes);
     if(sameDay(T)!==before.sameDay)setSkip(T,grp('stay'),sameDay(T),'Stay',notes);
     if((T.kids>0)!==before.kids)setList(T,'kids',T.kids>0,notes);
     return notes;
   }
   function skipWhy(T,g){
     if(g===grp('flights')&&noFly(T))return 'Skipped because you are '+(T.transport==='drive'?'driving':'taking a train or bus')+'.';
+    if(g===grp('transit')&&T.transport!=='train')return 'Skipped. Choose Train or bus on the Plan tab to bring it back.';
     if(g===grp('stay')&&sameDay(T))return 'Skipped because this is a day trip.';
     return 'Skipped for this trip.';
   }
@@ -691,7 +704,7 @@ form.card.add{border-top:1px solid var(--line)}
   async function makeTransfer(){
     var T=tr(),mem={};
     T.sections.forEach(function(s){mem[s.tpl]=s.items.map(function(i){return i.text})});
-    var payload=xferScope==='all'?{v:2,cur:state.cur,trips:state.trips,platforms:state.platforms,book:state.book,interestOpts:state.interestOpts,memory:state.memory,custom:state.custom}:{v:2,part:true,trips:[T],memory:mem};
+    var payload=xferScope==='all'?{v:2,bookV:2,cur:state.cur,trips:state.trips,platforms:state.platforms,book:state.book,interestOpts:state.interestOpts,memory:state.memory,custom:state.custom}:{v:2,part:true,trips:[T],memory:mem};
     var code=await packData(payload);
     xferResult={code:code,link:baseUrl()+'#transfer='+code};
     var o=$('xferOut');if(o)o.innerHTML=xferHTML();
