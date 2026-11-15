@@ -1,0 +1,97 @@
+/* Bodoni Moda, Hanken Grotesk and DM Mono, SIL Open Font License 1.1. See THIRD-PARTY.md */
+/* bodoni-moda-latin-600-normal */
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(bodoni-moda-latin-600-normal.woff2) format('woff2');
+}
+/* bodoni-moda-latin-ext-600-normal */
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(bodoni-moda-latin-ext-600-normal.woff2) format('woff2');
+}
+/* bodoni-moda-latin-600-italic */
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 600;
+  src: url(bodoni-moda-latin-600-italic.woff2) format('woff2');
+}
+/* bodoni-moda-latin-ext-600-italic */
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 600;
+  src: url(bodoni-moda-latin-ext-600-italic.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-400-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(hanken-grotesk-latin-400-normal.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-ext-400-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(hanken-grotesk-latin-ext-400-normal.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-500-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(hanken-grotesk-latin-500-normal.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-ext-500-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(hanken-grotesk-latin-ext-500-normal.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-600-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(hanken-grotesk-latin-600-normal.woff2) format('woff2');
+}
+/* hanken-grotesk-latin-ext-600-normal */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(hanken-grotesk-latin-ext-600-normal.woff2) format('woff2');
+}
+/* dm-mono-latin-400-normal */
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(dm-mono-latin-400-normal.woff2) format('woff2');
+}
+/* dm-mono-latin-ext-400-normal */
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(dm-mono-latin-ext-400-normal.woff2) format('woff2');
+}

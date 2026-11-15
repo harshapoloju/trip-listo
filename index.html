@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trip Listo</title>
+<meta name="description" content="Trip Listo is a free trip checklist. Plan it, book it, pack it and lock the door. No account, and your trips stay on your device.">
+<meta name="theme-color" content="#13203A">
+<meta property="og:title" content="Trip Listo">
+<meta property="og:description" content="A free trip checklist: plan, book, pack and leave the house without forgetting anything.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://harshapoloju.github.io/trip-listo/">
+<meta property="og:image" content="https://harshapoloju.github.io/trip-listo/icons/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trip Listo">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root{
+  /* Layout idea: a navy boarding pass up top (destination, flight-path progress, ticket stub), quiet white cards below, tabs in a bottom bar. Brass is the only accent. */
+  --paper:#E8EBF0; --card:#FFFFFF; --ink:#13203A; --muted:#5F6B85; --line:#D3D9E3;
+  --accent:#B98A2F; --accent-ink:#13203A; --ok:#1E7D5A; --on-ok:#FFFFFF; --danger:#B3382C;
+  --ticket:#13203A; --ticket-ink:#F3EEE2; --ticket-muted:#9AA6C0; --ticket-line:rgba(243,238,226,.24); --gold:#D8B46A; --mint:#6FD3A6;
+  --shadow:0 1px 2px rgba(19,32,58,.04),0 10px 26px -14px rgba(19,32,58,.18);
+  --display:'Bodoni Moda','Didot','Bodoni MT','Playfair Display',Georgia,serif;
+  --body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A1120; --card:#131C30; --ink:#ECE7DB; --muted:#8C98B3; --line:#243049;
+    --accent:#D8B46A; --accent-ink:#0A1120; --ok:#58C596; --on-ok:#08110D; --danger:#F08A7E;
+    --ticket:#1A2744; --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A1120; --card:#131C30; --ink:#ECE7DB; --muted:#8C98B3; --line:#243049;
+  --accent:#D8B46A; --accent-ink:#0A1120; --ok:#58C596; --on-ok:#08110D; --danger:#F08A7E;
+  --ticket:#1A2744; --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px calc(108px + env(safe-area-inset-bottom))}
+header{padding:4px 0 0}
+
+/* Brand and trip switcher */
+.brand-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-style:italic;font-weight:600;font-size:28px;letter-spacing:-.01em;line-height:1}
+.tagline{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.switch{display:flex;gap:8px;overflow-x:auto;padding:14px 16px 4px;margin:0 -16px;scrollbar-width:none}
+.switch::-webkit-scrollbar{display:none}
+.tchip{flex:none;display:flex;align-items:center;gap:8px;max-width:210px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
+.tchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tchip i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tchip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tchip[aria-pressed="true"] i{color:var(--paper);opacity:.7}
+.tchip.add{border-style:dashed;background:transparent;color:var(--muted)}
+
+/* Boarding pass */
+.ticket{position:relative;margin-top:10px;background:var(--ticket);color:var(--ticket-ink);border-radius:20px;padding:18px 20px 16px;box-shadow:0 20px 40px -24px rgba(10,17,32,.6)}
+.tk-top{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ticket-muted)}
+#readyLbl{color:var(--gold)}
+.trip{display:block;width:100%;border:0;background:transparent;color:var(--ticket-ink);font-family:var(--display);font-weight:600;font-size:48px;line-height:1.08;letter-spacing:-.015em;padding:8px 0 4px;margin:0;caret-color:var(--gold)}
+.trip::placeholder{color:var(--ticket-muted);font-style:italic}
+.trip:focus{outline:0}
+.meter{position:relative;height:24px;margin:6px 11px 0}
+.meter::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1.5px dashed var(--ticket-line)}
+.meter i{position:absolute;left:0;top:50%;height:2px;margin-top:-1px;width:0;background:var(--gold);border-radius:2px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.plane{position:absolute;top:50%;left:0;width:22px;height:22px;margin:-11px 0 0 -11px;color:var(--gold);transition:left .5s cubic-bezier(.2,.7,.2,1)}
+.plane svg{display:block;width:100%;height:100%;transform:rotate(90deg);fill:currentColor}
+.meter.done i{background:var(--mint)}
+.meter.done .plane{color:var(--mint)}
+.tk-stub{position:relative;display:grid;grid-template-columns:1.5fr 1fr auto;gap:14px;margin-top:14px;padding-top:14px;border-top:1.5px dashed var(--ticket-line)}
+.tk-stub::before,.tk-stub::after{content:'';position:absolute;top:-10px;width:20px;height:20px;border-radius:50%;background:var(--paper)}
+.tk-stub::before{left:-30px}
+.tk-stub::after{right:-30px}
+.tk-stub div{min-width:0}
+.tk-stub small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ticket-muted)}
+.tk-stub b{display:block;font-weight:600;font-size:15px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.banner{display:flex;align-items:center;gap:12px;margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(111,211,166,.14);border:1px solid rgba(111,211,166,.4);color:#CFF3E2;font-weight:600;font-size:15px}
+.banner span{flex:1}
+.banner .btn{background:var(--mint);color:#08110D;border-color:var(--mint)}
+
+/* Edit and copy tools */
+.bar{display:flex;justify-content:flex-end;margin:14px 0 -6px}
+.bar-in{display:flex;gap:8px}
+.bar .btn{padding:7px 14px;font-size:13px;border-radius:999px}
+.bar .btn.alt{background:var(--card)}
+#editBtn[aria-pressed="true"]{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;padding:12px 24px;font-size:15px;background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 12px 30px -8px rgba(10,17,32,.55)}
+
+/* Bottom tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);max-width:560px;margin:0 auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 90%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);border-top:1px solid var(--line)}
+.tab{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:none;padding:8px 2px 2px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.02em;line-height:1.3}
+.tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tab small{font-family:var(--mono);font-weight:400;font-size:10px;min-height:14px;font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"]{color:var(--ink)}
+.tab[aria-selected="true"]::before{content:'';position:absolute;top:-7px;left:50%;width:28px;height:3px;margin-left:-14px;border-radius:0 0 3px 3px;background:var(--accent)}
+.tab.full small{color:var(--ok)}
+
+/* Content */
+.label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:20px 2px 10px;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:500;transition:background .15s,color .15s,border-color .15s}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;margin:0 0 14px;overflow:hidden;box-shadow:var(--shadow)}
+.card h2{margin:0;display:flex;align-items:center;gap:10px;padding:16px 14px 13px;border-bottom:1px solid var(--line);font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.01em;line-height:1.1;text-wrap:balance}
+.card h2 .count{margin-left:auto;flex:none;font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card h2 .count.full{color:var(--ok)}
+.row{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:54px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.check{flex:none;width:26px;height:26px;border:1.5px solid var(--muted);border-radius:50%;background:transparent;display:grid;place-items:center;padding:0;transition:background .15s,border-color .15s}
+.check svg{width:16px;height:16px;opacity:0;stroke:var(--on-ok);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.check[aria-checked="true"]{background:var(--ok);border-color:var(--ok)}
+.check[aria-checked="true"] svg{opacity:1}
+.txt{flex:1;padding:14px 0;font-size:16px;overflow-wrap:anywhere;background:none;border:0;text-align:left}
+.row.done .txt{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.edit-in{flex:1;min-width:0;border:0;border-bottom:1.5px solid var(--line);background:transparent;padding:10px 0;font-size:16px}
+.edit-in:focus{outline:0;border-color:var(--accent)}
+.icon-btn{flex:none;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--danger);font-family:var(--body);font-size:22px;line-height:1}
+.add{display:flex;gap:8px;padding:12px 14px;background:color-mix(in srgb,var(--paper) 55%,var(--card));border-top:1px solid var(--line)}
+.add input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:10px 12px;font-size:16px}
+.add.col{flex-direction:column}
+.add.col .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.add.col input{width:100%}
+form.card.add{border-top:1px solid var(--line)}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:12px;padding:11px 16px;font-weight:600;font-size:15px;line-height:1.2}
+.btn.alt{background:transparent;color:var(--ink);border-color:color-mix(in srgb,var(--ink) 28%,transparent)}
+.btn.danger{border-color:color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger);background:transparent}
+.mini{flex:none;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-family:var(--body);font-size:13px;font-weight:600;letter-spacing:0;line-height:1.2}
+.link-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.link-row:last-child{border-bottom:0}
+.link-main{flex:1;min-width:0}
+.link-main a{font-weight:600;font-size:16px;color:var(--ink);text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px}
+.link-main span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.link-main a.off{color:var(--muted);text-decoration:none;pointer-events:none}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px}
+.fields .full{grid-column:1/-1}
+.field{min-width:0}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--paper) 55%,var(--card));padding:10px 12px;font-size:16px;min-height:46px}
+.field input[type=date]{min-width:0;max-width:100%;display:block}
+.pad{padding:0 14px 14px}
+.pad .label{margin:4px 0 10px}
+.prompt{margin:0;padding:14px;font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;background:color-mix(in srgb,var(--paper) 55%,var(--card));border-top:1px solid var(--line)}
+.hint{padding:12px 14px;color:var(--muted);font-size:14px}
+.warn{color:var(--danger);font-size:14px;margin:0 0 10px}
+.warn:empty{display:none}
+.row-edit{display:grid;grid-template-columns:1fr 44px;gap:8px;align-items:start;padding:12px 14px;border-bottom:1px solid var(--line)}
+.row-edit .stack{display:grid;gap:8px}
+.row-edit .field input{padding:8px 10px;min-height:40px;font-size:15px}
+.actions{display:grid;gap:8px;padding:14px}
+.filebtn{display:block;text-align:center}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}
+.qr{background:#fff;border-radius:12px;padding:8px;width:min(260px,100%);margin:0 auto}
+.qr svg{display:block;width:100%;height:auto}
+.xfer-out{display:grid;gap:10px;padding:0 14px 14px}
+.xfer-out:empty{display:none}
+.xfer-out .label{margin:0}
+.xfer-out textarea,.actions textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--paper) 55%,var(--card));padding:10px 12px;font-size:13px;font-family:var(--mono)}
+.incoming{margin:14px 0 0;border-color:var(--accent)}
+.incoming .actions{padding-top:0}
+.empty{padding:18px 14px;color:var(--muted)}
+.foot{margin:26px 0 0;font-size:12px;color:var(--muted);text-align:center}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(146px + env(safe-area-inset-bottom));z-index:8;max-width:528px;margin:0 auto;background:#13203A;color:#F3EEE2;border:1px solid rgba(243,238,226,.16);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;font-size:15px;box-shadow:0 14px 34px -12px rgba(10,17,32,.6)}
+.toast span{flex:1}
+.toast button{border:0;background:transparent;color:#D8B46A;font-weight:600;font-size:15px;padding:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand-row"><span class="brand" id="brand">Trip Listo</span><span class="tagline">Plan it. Pack it. Lock the door.</span></div>
+    <div class="switch" id="switch" role="group" aria-label="Your trips"></div>
+    <div id="tripHead" class="ticket">
+      <div class="tk-top"><span id="readyLbl">Ready</span><span>Boarding pass</span></div>
+      <input id="tripName" class="trip" type="text" placeholder="Where to?" aria-label="Trip destination" maxlength="40" autocomplete="off">
+      <div class="meter" id="meter" role="progressbar" aria-label="Trip readiness" aria-valuemin="0" aria-valuemax="100"><i id="meterFill"></i><span class="plane" id="plane" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></span></div>
+      <div class="tk-stub">
+        <div><small>Dates</small><b id="tkDates">Not set</b></div>
+        <div><small>Travelers</small><b id="tkWho">2 people</b></div>
+        <div><small>Ready</small><b><span id="doneN">0</span>/<span id="totalN">0</span></b></div>
+      </div>
+      <div id="banner"></div>
+    </div>
+  </header>
+  <div id="incoming"></div>
+  <div class="bar" id="bar"><div class="bar-in">
+    <button class="btn alt" id="copyBtn">Copy as text</button>
+    <button class="btn alt" id="editBtn" aria-pressed="false">Edit</button>
+  </div></div>
+  <main id="view"></main>
+  <p class="foot">Your trips are saved on this device only. Built by Harsha with Claude.</p>
+</div>
+<nav class="tabs" role="tablist" id="tabs" aria-label="Sections"></nav>
+<div id="toastHost"></div>
+
+<script src="vendor/qrcode.js"></script>
+<script>
+(function(){
+  /* Change the app name here. It updates the badge, the tab title and the messages. */
+  var APP='Trip Listo';
+  var KEY='carryon-v2',OLDKEY='pretrip-v1';
+  var uid=function(){return Math.random().toString(36).slice(2,9)};
+  var it=function(t){return {id:uid(),text:t,done:false}};
+
+  var TEMPLATES=[
+    {tpl:'essentials',group:'pack',title:'Essentials',items:['Phone and charger','Wallet and cards','Photo ID / driver\'s license','Keys','Medications','Toiletries','Sunglasses','Water bottle']},
+    {tpl:'office',group:'pack',title:'Office trip',items:['Laptop','Laptop charger','Work badge','Notebook and pen','Business clothes','Presentation and files backed up','Earbuds']},
+    {tpl:'hiking',group:'pack',title:'Hiking and camping',items:['Backpack','Hiking shoes','Extra socks','Rain jacket','Warm layers / fleece','Headlamp','First-aid kit','Trail snacks','Sunscreen and bug spray','Offline trail map','Bear spray (where needed)']},
+    {tpl:'flying',group:'pack',title:'Flying',items:['Passport or government ID','Boarding pass','Travel adapter','Power bank','Neck pillow','Liquids in a clear bag (100 ml / 3.4 oz each)','Headphones']},
+    {tpl:'road',group:'pack',title:'Road trip',items:['Driver\'s license','Car insurance and registration','Check the spare tire and jack','Phone mount and car charger','Cooler and snacks','Playlists and podcasts downloaded','Cash for tolls and park fees']},
+    {tpl:'beach',group:'pack',title:'Beach and pool',items:['Swimsuit','Towel','Flip-flops','Sunscreen','Hat','Dry bag']},
+    {tpl:'kids',group:'pack',title:'With kids',items:['Snacks','Spare clothes','Wipes and diapers','Favorite toy or comfort item','Tablet and headphones','Kids\' medications']},
+    {tpl:'work',group:'home',title:'Work and time off',items:['Apply for leave (PTO) and get it approved','Set an out-of-office auto-reply','Hand off urgent tasks to a teammate','Share dates and a contact plan with my manager','Decide: take the office laptop or leave it','If taking it: pack the laptop and charger','Decline or move meetings during the trip']},
+    {tpl:'admin',group:'home',title:'Travel admin',items:['Passport valid 6+ months (international)','Visa or entry permit (if needed)','Travel insurance','Tell the bank and card companies','Local currency or a travel card','Phone roaming plan or eSIM','Save booking confirmations offline','Download offline maps','Share the itinerary with family','Check the weather forecast','Check permits and park reservations']},
+    {tpl:'home',group:'home',title:'Before you lock the door',items:['Gas and stove off','Lights off','Windows and doors locked','Heating / cooling set','Unplug small appliances','Take out trash','Clear the fridge of perishables','Water the plants / arrange pet care','Hold mail or tell a neighbor']}
+  ];
+  var BOOK=[
+    {title:'Flights',rows:[['skyscanner','Skyscanner','Compare flight prices','https://www.skyscanner.com'],['gflights','Google Flights','Price calendar and tracking','https://www.google.com/travel/flights']]},
+    {title:'Stay',rows:[['booking','Booking.com','Hotels and apartments','https://www.booking.com'],['airbnb','Airbnb','Homes and cabins','https://www.airbnb.com'],['hostelworld','Hostelworld','Hostels and budget stays','https://www.hostelworld.com']]},
+    {title:'Getting around',rows:[['rome2rio','Rome2Rio','Trains, buses and ferries between places','https://www.rome2rio.com'],['kayak-cars','Kayak car rental','Compare rental companies','https://www.kayak.com/cars'],['enterprise','Enterprise','Rent directly','https://www.enterprise.com'],['hertz','Hertz','Rent directly','https://www.hertz.com']]},
+    {title:'Things to do',rows:[['ticketmaster','Ticketmaster','Concerts and shows','https://www.ticketmaster.com'],['luma','Luma','Local events and meetups','https://lu.ma'],['eventbrite','Eventbrite','Events and experiences','https://www.eventbrite.com'],['alltrails','AllTrails','Hiking routes','https://www.alltrails.com'],['getyourguide','GetYourGuide','Tours and activities','https://www.getyourguide.com']]}
+  ];
+  function defaultBook(){return BOOK.map(function(g){return {id:'g-'+g.title.toLowerCase().replace(/[^a-z]+/g,'-'),title:g.title,rows:g.rows.map(function(r){return {id:r[0],name:r[1],note:r[2],url:r[3]}})}})}
+  function platformDefaults(){return [
+    {id:'claude',name:'Claude',url:'https://claude.ai/new?q={prompt}'},
+    {id:'chatgpt',name:'ChatGPT',url:'https://chatgpt.com/?q={prompt}'},
+    {id:'gemini',name:'Gemini',url:'https://gemini.google.com/app'},
+    {id:'aimode',name:'Google AI Mode',url:'https://www.google.com/search?udm=50&q={prompt}'},
+    {id:'perplexity',name:'Perplexity',url:'https://www.perplexity.ai/search?q={prompt}'}
+  ]}
+  function defaultInterests(){return ['Touristy highlights','Offbeat and quiet','Hiking','Adventure','Comfort and relaxing','Food','Nightlife and events','Family friendly']}
+  var TRANSPORT=[['fly','Fly'],['drive','Drive'],['train','Train or bus']];
+
+  var state=null;
+  function builtin(k){return TEMPLATES.filter(function(t){return t.tpl===k})[0]}
+  /* Lists the user created themselves are kept in state.custom so they can be reused on later trips. */
+  function allTpls(group){
+    var own=(state&&state.custom||[]).map(function(c){return {tpl:c.tpl,group:c.group,title:c.title,items:[],custom:true}});
+    return TEMPLATES.concat(own).filter(function(t){return !group||t.group===group});
+  }
+  function tplByKey(k){return allTpls().filter(function(t){return t.tpl===k})[0]}
+  /* A list remembers your last edits (state.memory) so it comes back the way you left it. */
+  function makeSection(t){var m=state&&state.memory&&state.memory[t.tpl];return {id:uid(),tpl:t.tpl,group:t.group,title:t.title,items:(Array.isArray(m)?m:t.items).map(it)}}
+  function blankTrip(){return {id:uid(),name:'',start:'',end:'',adults:2,kids:0,transport:'',interests:[],notes:'',booked:{},skip:{},created:Date.now(),archivedAt:null,progress:0,sections:[makeSection(builtin('essentials')),makeSection(builtin('home'))]}}
+  /* A new trip copies the choices of an earlier one. Ticks, bookings and dates start fresh. */
+  function cloneTrip(src){
+    var skip={};for(var k in src.skip)if(src.skip[k])skip[k]=true;
+    return {id:uid(),name:'',start:'',end:'',adults:src.adults,kids:src.kids,transport:src.transport,interests:(src.interests||[]).slice(),notes:'',booked:{},skip:skip,created:Date.now(),archivedAt:null,progress:0,
+      sections:src.sections.map(function(s){return {id:uid(),tpl:s.tpl,group:s.group,title:s.title,items:s.items.map(function(i){return {id:uid(),text:i.text,done:false}})}})};
+  }
+
+  /* Everything loaded from storage, a link, a QR code or a file passes through these checks first. */
+  var BAD={'__proto__':1,'constructor':1,'prototype':1};
+  function sid(v){v=String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);return (!v||BAD[v])?uid():v}
+  function str(v,n){return typeof v==='string'?v.slice(0,n||200):''}
+  function num(v,lo,hi,def){if(v===null||v===undefined||v==='')return def;v=Number(v);return isFinite(v)?Math.max(lo,Math.min(hi,Math.round(v))):def}
+  function isoDate(v){return (typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v))?v:''}
+  function flags(o){var out={};if(o&&typeof o==='object')Object.keys(o).slice(0,300).forEach(function(k){if(o[k]===true&&/^[A-Za-z0-9_-]{1,40}$/.test(k)&&!BAD[k])out[k]=true});return out}
+  function cleanTrip(t){
+    t=(t&&typeof t==='object')?t:{};
+    return {id:sid(t.id),name:str(t.name,60),start:isoDate(t.start),end:isoDate(t.end),adults:num(t.adults,0,20,2),kids:num(t.kids,0,20,0),
+      transport:(['fly','drive','train'].indexOf(t.transport)>-1?t.transport:''),
+      interests:(Array.isArray(t.interests)?t.interests:[]).slice(0,40).map(function(x){return str(x,40)}).filter(Boolean),
+      notes:str(t.notes,200),booked:flags(t.booked),skip:flags(t.skip),
+      created:num(t.created,0,9e15,Date.now()),archivedAt:(t.archivedAt?num(t.archivedAt,1,9e15,Date.now()):null),progress:num(t.progress,0,100,0),
+      sections:(Array.isArray(t.sections)?t.sections:[]).slice(0,60).map(function(s){
+        s=(s&&typeof s==='object')?s:{};
+        return {id:sid(s.id),tpl:sid(s.tpl),group:(s.group==='home'?'home':'pack'),title:str(s.title,60)||'List',
+          items:(Array.isArray(s.items)?s.items:[]).slice(0,200).map(function(i){i=(i&&typeof i==='object')?i:{};return {id:sid(i.id),text:str(i.text,120),done:i.done===true}})};
+      })};
+  }
+  function freshState(){
+    state={v:2,cur:null,trips:[],tab:'plan',edit:false,platforms:platformDefaults(),book:defaultBook(),interestOpts:defaultInterests(),memory:{},custom:[]};
+    var t=blankTrip();state.trips=[t];state.cur=t.id;return state;
+  }
+  function migrate(o){
+    if(!o||typeof o!=='object')return null;
+    var trips;
+    if(o.v===2&&Array.isArray(o.trips)&&o.trips.length)trips=o.trips;
+    else if(Array.isArray(o.sections)){
+      var t1=(o.trip&&typeof o.trip==='object')?o.trip:{};
+      trips=[{name:o.name,booked:o.booked,sections:o.sections,start:t1.start,end:t1.end,adults:t1.adults,kids:t1.kids,transport:t1.transport,interests:t1.interests,notes:t1.notes}];
+    } else return null;
+    var s={v:2,tab:'plan',edit:false,part:o.part===true};
+    s.trips=trips.slice(0,200).map(cleanTrip);
+    s.cur=sid(o.cur);
+    s.platforms=Array.isArray(o.platforms)?o.platforms.slice(0,30).map(function(p){p=(p&&typeof p==='object')?p:{};return {id:sid(p.id),name:str(p.name,60),url:str(p.url,500)}}):platformDefaults();
+    s.book=Array.isArray(o.book)?o.book.slice(0,30).map(function(g){g=(g&&typeof g==='object')?g:{};return {id:sid(g.id),title:str(g.title,60),rows:(Array.isArray(g.rows)?g.rows:[]).slice(0,40).map(function(r){r=(r&&typeof r==='object')?r:{};return {id:sid(r.id),name:str(r.name,60),note:str(r.note,80),url:str(r.url,500)}})}}):defaultBook();
+    s.interestOpts=Array.isArray(o.interestOpts)?o.interestOpts.slice(0,40).map(function(x){return str(x,40)}).filter(Boolean):defaultInterests();
+    s.memory={};
+    if(o.memory&&typeof o.memory==='object')Object.keys(o.memory).slice(0,200).forEach(function(k){
+      if(/^[A-Za-z0-9_-]{1,40}$/.test(k)&&!BAD[k]&&Array.isArray(o.memory[k]))s.memory[k]=o.memory[k].slice(0,200).map(function(x){return str(x,120)}).filter(Boolean);
+    });
+    s.custom=(Array.isArray(o.custom)?o.custom:[]).slice(0,60).map(function(c){c=(c&&typeof c==='object')?c:{};return {tpl:sid(c.tpl),group:(c.group==='home'?'home':'pack'),title:str(c.title,60)||'List'}}).filter(function(c){return !builtin(c.tpl)});
+    s.trips.forEach(function(t){t.sections.forEach(function(x){
+      if(!builtin(x.tpl)&&!s.custom.some(function(c){return c.tpl===x.tpl}))s.custom.push({tpl:x.tpl,group:x.group,title:x.title});
+    })});
+    return s;
+  }
+  try{
+    var raw=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY);
+    if(raw)state=migrate(JSON.parse(raw));
+  }catch(e){state=null}
+  if(!state)freshState();
+  delete state.part;
+
+  function tr(){
+    var a=state.trips.filter(function(x){return x.id===state.cur&&!x.archivedAt})[0];
+    if(!a){
+      a=state.trips.filter(function(x){return !x.archivedAt})[0];
+      if(!a){a=blankTrip();state.trips.push(a)}
+      state.cur=a.id;
+    }
+    return a;
+  }
+  function remember(){
+    var c=tr();
+    c.sections.forEach(function(s){state.memory[s.tpl]=s.items.map(function(i){return i.text}).filter(function(x){return x.trim()})});
+  }
+  var xferScope='trip',xferResult=null,pending=null;
+  function save(){xferResult=null;try{remember();localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+  /* Transfer: the data is compressed (when the browser can) and written as text that fits in a link or QR code. */
+  function b64u(bytes){var s='';for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+  function unb64u(str){str=str.replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';var s=atob(str),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+  async function packData(obj){
+    var bytes=new TextEncoder().encode(JSON.stringify(obj));
+    if(window.CompressionStream){
+      try{var cs=new CompressionStream('deflate-raw'),w=cs.writable.getWriter();w.write(bytes);w.close();var buf=await new Response(cs.readable).arrayBuffer();return 'z.'+b64u(new Uint8Array(buf))}catch(e){}
+    }
+    return 'j.'+b64u(bytes);
+  }
+  async function unpackData(code){
+    var kind=code.slice(0,2),bytes=unb64u(code.slice(2));
+    if(kind==='z.'){var ds=new DecompressionStream('deflate-raw'),w=ds.writable.getWriter();w.write(bytes);w.close();bytes=new Uint8Array(await new Response(ds.readable).arrayBuffer())}
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  function qrSvg(text){
+    if(typeof qrcode!=='function'||text.length>2800)return '';
+    try{
+      var q=qrcode(0,'L');q.addData(text,'Byte');q.make();
+      var n=q.getModuleCount(),m=4,d='';
+      for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))d+='M'+(c+m)+' '+(r+m)+'h1v1h-1z';
+      var sz=n+m*2;
+      return '<svg viewBox="0 0 '+sz+' '+sz+'" role="img" aria-label="QR code with your trip data" shape-rendering="crispEdges"><rect width="'+sz+'" height="'+sz+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';
+    }catch(e){return ''}
+  }
+  function baseUrl(){return location.href.split('#')[0]}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function safeUrl(u){return /^https?:\/\//i.test(u)}
+  function fixUrl(u){u=(u||'').trim();return (!u||safeUrl(u))?u:'https://'+u.replace(/^\/+/,'')}
+  /* Runs when you leave Edit: drops blank rows and repairs links typed without https:// */
+  function tidy(){
+    state.trips.forEach(function(t){t.sections.forEach(function(s){s.items=s.items.filter(function(i){i.text=i.text.trim();return i.text})})});
+    state.platforms=state.platforms.filter(function(p){p.name=p.name.trim();p.url=fixUrl(p.url);if(!p.name&&p.url)p.name='Assistant';return p.name});
+    state.book.forEach(function(g){
+      g.title=g.title.trim()||'Untitled';
+      g.rows=g.rows.filter(function(r){r.name=r.name.trim();r.url=fixUrl(r.url);if(!r.name&&r.url)r.name=r.url;return r.name});
+    });
+  }
+  function endEdit(){if(state.edit)tidy();state.edit=false}
+  function parseD(v){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+  function fmtD(v,loc){var d=parseD(v);return d?d.toLocaleDateString(loc,{month:'short',day:'numeric',year:'numeric'}):''}
+  function datesBad(T){var a=parseD(T.start),b=parseD(T.end);return !!(a&&b&&b<a)}
+  function countdown(T){
+    var s=parseD(T.start);if(!s)return 'Ready';
+    var now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()),n=Math.round((s-t0)/86400000);
+    if(n>1)return n+' days to go';if(n===1)return 'Leaving tomorrow';if(n===0)return 'Leaving today';
+    var e=parseD(T.end);return (e&&t0<=e)?'On the trip':'Trip dates have passed';
+  }
+
+  var $=function(id){return document.getElementById(id)};
+  var view=$('view'),tabs=$('tabs');
+
+  function counts(trip,group){
+    var d=0,t=0;
+    trip.sections.forEach(function(s){if(s.group!==group)return;s.items.forEach(function(i){t++;if(i.done)d++})});
+    return {d:d,t:t};
+  }
+  /* Smart defaults: choices on the Plan tab switch off what the trip does not need. Everything can be switched back by hand. */
+  function grp(kind){return state.book.filter(function(g){return kind==='flights'?(g.id==='g-flights'||/flight/i.test(g.title)):(g.id==='g-stay'||/stay|hotel|lodging/i.test(g.title))})[0]}
+  function sameDay(T){return !!(T.start&&T.end&&T.start===T.end)}
+  function noFly(T){return T.transport==='drive'||T.transport==='train'}
+  function snapT(T){return {transport:T.transport,noFly:noFly(T),sameDay:sameDay(T),kids:T.kids>0}}
+  function setList(T,tpl,on,notes){
+    var has=T.sections.filter(function(x){return x.tpl===tpl})[0],t=builtin(tpl);
+    if(on&&!has){T.sections.push(makeSection(t));notes.push(t.title+' list added')}
+    else if(!on&&has&&!has.items.some(function(i){return i.done})){T.sections=T.sections.filter(function(x){return x!==has});notes.push(t.title+' list removed')}
+  }
+  function setSkip(T,g,on,name,notes){
+    if(!g)return;
+    if(on&&!T.skip[g.id]){T.skip[g.id]=true;notes.push(name+' skipped')}
+    else if(!on&&T.skip[g.id]){delete T.skip[g.id];notes.push(name+' brought back')}
+  }
+  function smart(T,before){
+    var notes=[];
+    if(noFly(T)!==before.noFly)setSkip(T,grp('flights'),noFly(T),'Flights',notes);
+    if(T.transport!==before.transport){setList(T,'road',T.transport==='drive',notes);setList(T,'flying',T.transport==='fly',notes)}
+    if(sameDay(T)!==before.sameDay)setSkip(T,grp('stay'),sameDay(T),'Stay',notes);
+    if((T.kids>0)!==before.kids)setList(T,'kids',T.kids>0,notes);
+    return notes;
+  }
+  function skipWhy(T,g){
+    if(g===grp('flights')&&noFly(T))return 'Skipped because you are '+(T.transport==='drive'?'driving':'taking a train or bus')+'.';
+    if(g===grp('stay')&&sameDay(T))return 'Skipped because this is a day trip.';
+    return 'Skipped for this trip.';
+  }
+  function groupDone(trip,g){return g.rows.some(function(r){return trip.booked[r.id]})}
+  /* A booking group counts once: it is done when any one of its links is ticked. Skipped groups do not count. */
+  function bookCounts(trip){var d=0,t=0;state.book.forEach(function(g){if(!g.rows.length||trip.skip[g.id])return;t++;if(groupDone(trip,g))d++});return {d:d,t:t}}
+  function tripTotals(trip){var a=counts(trip,'pack'),b=counts(trip,'home'),c=bookCounts(trip);return {d:a.d+b.d+c.d,t:a.t+b.t+c.t}}
+  function pct(trip){var t=tripTotals(trip);return t.t?Math.round(t.d/t.t*100):0}
+
+  var ICON={
+    plan:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+    book:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v3.5a1.5 1.5 0 0 0 0 3V17H4v-3.5a1.5 1.5 0 0 0 0-3z"/><path d="M14.5 7v10" stroke-dasharray="1.5 2.5"/></svg>',
+    pack:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M9 11v4M15 11v4"/></svg>',
+    home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3.5 21h17M14.5 12v1.500"/></svg>',
+    more:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/></svg>'
+  };
+  var CHECK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+  function dayCount(T){var a=parseD(T.start),b=parseD(T.end);if(!a||!b)return 0;var n=Math.round((b-a)/86400000)+1;return n>0?n:0}
+  function buildPrompt(){
+    var T=tr(),dest=(T.name||'').trim(),n=dayCount(T),p=[];
+    var who=[];if(T.adults>0)who.push(T.adults+(T.adults===1?' adult':' adults'));if(T.kids>0)who.push(T.kids+(T.kids===1?' child':' children'));
+    var line='Plan a day-by-day itinerary for a trip to '+(dest||'[destination]');
+    if(T.start&&T.end&&n>0)line+=' from '+fmtD(T.start,'en-US')+' to '+fmtD(T.end,'en-US')+' ('+n+(n===1?' day':' days')+')';
+    else if(T.start)line+=' starting '+fmtD(T.start,'en-US');
+    p.push(line+'.');
+    if(who.length)p.push('Travelers: '+who.join(' and ')+'.');
+    if(T.transport){var tm={fly:'flying in',drive:'driving',train:'taking a train or bus'};p.push('Getting there: '+tm[T.transport]+'.')}
+    if(T.interests.length)p.push('Interests: '+T.interests.join(', ').toLowerCase()+'.');
+    if((T.notes||'').trim())p.push('Also: '+T.notes.trim());
+    p.push('Include a realistic daily schedule with travel times, the best area to stay in, anything I must book ahead (permits, tickets, reservations) with lead times, one rainy-day backup, and a short packing note for the season. Ask me clarifying questions only if essential.');
+    return p.join('\n');
+  }
+  function copyText(txt,msg){
+    try{navigator.clipboard.writeText(txt).then(function(){toast(msg)},function(){toast('Copy was blocked. Select the text and copy it by hand.')})}catch(err){toast('Copy was blocked. Select the text and copy it by hand.')}
+  }
+
+  /* Long destinations shrink so they are never cut off. */
+  function fitName(){var el=$('tripName'),n=(el.value||'').length;el.style.fontSize=n>24?'22px':n>18?'27px':n>13?'33px':n>9?'40px':''}
+  function renderHeader(){
+    var T=tr(),special=(state.tab==='new'||state.tab==='past');
+    var more=(state.tab==='more');
+    $('tripHead').style.display=(special||more)?'none':'';
+    tabs.style.display=special?'none':'';
+    var act=state.trips.filter(function(x){return !x.archivedAt}),arch=state.trips.length-act.length,sw='';
+    act.forEach(function(x){sw+='<button class="tchip" data-trip="'+x.id+'" aria-pressed="'+(!special&&x.id===T.id)+'"><span>'+esc(x.name||'Untitled trip')+'</span><i>'+pct(x)+'%</i></button>'});
+    sw+='<button class="tchip add" data-newtrip="1" aria-pressed="'+(state.tab==='new')+'">+ New trip</button>';
+    if(arch)sw+='<button class="tchip" data-past="1" aria-pressed="'+(state.tab==='past')+'">Past ('+arch+')</button>';
+    $('switch').innerHTML=sw;
+    var t=tripTotals(T),p=t.t?Math.round(t.d/t.t*100):0;
+    $('doneN').textContent=t.d;$('totalN').textContent=t.t;
+    $('readyLbl').textContent=countdown(T);$('brand').textContent=APP;
+    $('meterFill').style.width=p+'%';$('plane').style.left=p+'%';
+    var sd=function(v){var d=parseD(v);return d?d.toLocaleDateString(undefined,{month:'short',day:'numeric'}):''};
+    $('tkDates').textContent=(T.start&&T.end&&!datesBad(T))?sd(T.start)+' \u2013 '+sd(T.end):(sd(T.start)||'Not set');
+    var ppl=T.adults+T.kids;$('tkWho').textContent=ppl+(ppl===1?' person':' people');
+    $('meter').setAttribute('aria-valuenow',p);
+    $('meter').classList.toggle('done',t.t>0&&t.d===t.t);
+    $('banner').innerHTML=(t.t>0&&t.d===t.t)?'<div class="banner"><span>Everything is checked.</span><button class="btn" data-archive="1">Finish trip</button></div>':'';
+    if($('tripName')!==document.activeElement)$('tripName').value=T.name||'';
+    fitName();
+    var P=counts(T,'pack'),H=counts(T,'home'),B=bookCounts(T);
+    var filled=((T.name||'').trim()?1:0)+(T.start?1:0)+(T.end?1:0)+(T.adults>0?1:0);
+    var defs=[['plan','Plan',{d:filled,t:4}],['book','Book',B],['pack','Pack',P],['home','Leave',H],['more','More',null]];
+    tabs.innerHTML=defs.map(function(x){
+      var full=x[2]&&x[2].t>0&&x[2].d===x[2].t;
+      return '<button class="tab'+(full?' full':'')+'" role="tab" data-tab="'+x[0]+'" aria-selected="'+(state.tab===x[0])+'">'+ICON[x[0]]+'<span>'+x[1]+'</span><small>'+(x[2]?x[2].d+'/'+x[2].t:'&nbsp;')+'</small></button>';
+    }).join('');
+    $('editBtn').setAttribute('aria-pressed',state.edit);
+    $('editBtn').textContent=state.edit?'Done editing':'Edit';$('copyBtn').style.display=state.edit?'none':'';
+    $('editBtn').className='btn'+(state.edit?'':' alt');
+    $('bar').style.display=(special||more)?'none':'';
+    document.title=((T.name||'').trim()?T.name.trim()+' · ':'')+APP;
+  }
+
+  function sectionHTML(s){
+    var d=s.items.filter(function(i){return i.done}).length;
+    var rows=s.items.map(function(i){
+      if(state.edit){
+        return '<div class="row"><input class="edit-in" data-edit="'+s.id+':'+i.id+'" value="'+esc(i.text)+'" aria-label="Item name" maxlength="80"><button class="icon-btn" data-del="'+s.id+':'+i.id+'" aria-label="Delete '+esc(i.text)+'">&times;</button></div>';
+      }
+      return '<div class="row'+(i.done?' done':'')+'"><button class="check" role="checkbox" aria-checked="'+i.done+'" aria-label="'+esc(i.text)+'" data-tog="'+s.id+':'+i.id+'">'+CHECK+'</button><button class="txt" data-tog="'+s.id+':'+i.id+'">'+esc(i.text)+'</button></div>';
+    }).join('');
+    if(!s.items.length)rows='<div class="empty">Nothing here yet.</div>';
+    var add=state.edit?'<form class="add" data-add="'+s.id+'"><input type="text" placeholder="Add an item" aria-label="Add an item to '+esc(s.title)+'" maxlength="80"><button class="btn" type="submit">Add</button></form>':'';
+    var reset=(state.edit&&builtin(s.tpl))?'<div class="pad" style="padding-top:10px"><button class="btn alt" data-resetsec="'+s.id+'">Reset to default items</button></div>':'';
+    var rm=state.edit?'<button class="icon-btn" data-rmsec="'+s.id+'" aria-label="Remove the list '+esc(s.title)+' from this trip">&times;</button>':'';
+    return '<section class="card"><h2>'+esc(s.title)+'<span class="count'+(s.items.length&&d===s.items.length?' full':'')+'">'+d+'/'+s.items.length+'</span>'+rm+'</h2>'+rows+add+reset+'</section>';
+  }
+
+  function renderPackHome(group){
+    var T=tr(),out='',tpls=allTpls(group),own=tpls.some(function(t){return t.custom});
+    out+='<div class="label">Tap to add or remove a list for this trip'+(state.edit&&own?'. Tap &times; to delete one of your own lists for good':'')+'</div><div class="chips">';
+    tpls.forEach(function(t){
+      var on=T.sections.some(function(s){return s.tpl===t.tpl});
+      if(state.edit&&t.custom)out+='<button class="chip" data-delcustom="'+t.tpl+'" aria-label="Delete the list '+esc(t.title)+' for good">'+esc(t.title)+' &times;</button>';
+      else out+='<button class="chip" data-tpl="'+t.tpl+'" aria-pressed="'+on+'">'+(on?'&#10003; ':'+ ')+esc(t.title)+'</button>';
+    });
+    out+='</div>';
+    var secs=T.sections.filter(function(s){return s.group===group});
+    if(!secs.length)out+='<div class="card"><div class="empty">No lists here yet. Pick one above.</div></div>';
+    secs.forEach(function(s){out+=sectionHTML(s)});
+    if(state.edit)out+='<form class="card add" data-newsec="'+group+'"><input type="text" placeholder="New list name" aria-label="New list name" maxlength="40"><button class="btn" type="submit">Add list</button></form>';
+    return out;
+  }
+
+  function renderBook(){
+    var T=tr(),out='<div class="label">'+(state.edit?'Edit names, notes and links. Add your own.':'Links open in a new tab. Tick the one you booked with. Skip what you do not need.')+'</div>';
+    state.book.forEach(function(g){
+      var sk=!!T.skip[g.id],done=groupDone(T,g);
+      out+='<section class="card"><h2>'+(state.edit?'<input class="edit-in" style="font-family:var(--display);font-size:22px" data-gt="'+g.id+'" value="'+esc(g.title)+'" aria-label="Group name" maxlength="40"><button class="icon-btn" data-delgroup="'+g.id+'" aria-label="Remove group '+esc(g.title)+'">&times;</button>':esc(g.title)+'<span class="count'+(done&&!sk?' full':'')+'">'+(sk?'Not needed':done?'Booked':'To book')+'</span><button class="mini" data-skip="'+g.id+'">'+(sk?'Bring back':'Skip')+'</button>')+'</h2>';
+      if(sk&&!state.edit){out+='<div class="hint">'+skipWhy(T,g)+'</div></section>';return}
+      if(!g.rows.length&&!state.edit)out+='<div class="empty">No links yet. Tap Edit to add one.</div>';
+      g.rows.forEach(function(r){
+        if(state.edit){
+          out+='<div class="row-edit"><div class="stack"><div class="field"><input data-bk="'+g.id+':'+r.id+':name" value="'+esc(r.name)+'" aria-label="Name" placeholder="Name" maxlength="50"></div><div class="field"><input data-bk="'+g.id+':'+r.id+':note" value="'+esc(r.note||'')+'" aria-label="Note" placeholder="Short note" maxlength="60"></div><div class="field"><input data-bk="'+g.id+':'+r.id+':url" value="'+esc(r.url)+'" aria-label="Link" placeholder="https://" inputmode="url" autocapitalize="off"></div></div><button class="icon-btn" data-delbk="'+g.id+':'+r.id+'" aria-label="Remove '+esc(r.name)+'">&times;</button></div>';
+          return;
+        }
+        var on=!!T.booked[r.id],ok=safeUrl(r.url);
+        out+='<div class="link-row"><div class="link-main">'+(ok?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.name)+' &#8599;</a>':'<a class="off">'+esc(r.name)+'</a>')+'<span>'+esc(r.note||'')+'</span></div>'+
+          '<button class="check" role="checkbox" aria-checked="'+on+'" aria-label="Booked with '+esc(r.name)+'" data-book="'+r.id+'">'+CHECK+'</button></div>';
+      });
+      if(state.edit)out+='<form class="add col" data-addbk="'+g.id+'"><div class="two"><input name="bn" type="text" placeholder="Name" aria-label="New link name" maxlength="50"><input name="bu" type="text" placeholder="https://" inputmode="url" autocapitalize="off" aria-label="New link address"></div><button class="btn" type="submit">Add link</button></form>';
+      out+='</section>';
+    });
+    if(state.edit)out+='<form class="card add" data-addgroup="1"><input type="text" placeholder="New group, e.g. Insurance" aria-label="New group name" maxlength="40"><button class="btn" type="submit">Add group</button></form><button class="btn alt" data-resetbook="1" style="width:100%">Reset links to defaults</button>';
+    return out;
+  }
+
+  function stepper(id,label,val){
+    return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="number" inputmode="numeric" min="0" max="20" value="'+val+'" data-field="'+id+'"></div>';
+  }
+  function aiHTML(){
+    var T=tr(),ready=(T.name||'').trim().length>0,q=encodeURIComponent(buildPrompt()),out='';
+    state.platforms.forEach(function(p){
+      if(state.edit){
+        out+='<div class="row-edit"><div class="stack"><div class="field"><input data-pf="'+p.id+':name" value="'+esc(p.name)+'" aria-label="Assistant name" placeholder="Name" maxlength="40"></div><div class="field"><input data-pf="'+p.id+':url" value="'+esc(p.url)+'" aria-label="Assistant link" placeholder="https://" inputmode="url" autocapitalize="off"></div></div><button class="icon-btn" data-delpf="'+p.id+'" aria-label="Remove '+esc(p.name)+'">&times;</button></div>';
+        return;
+      }
+      var tpl=p.url.indexOf('{prompt}')>-1,ok=safeUrl(p.url),href=tpl?p.url.split('{prompt}').join(q):p.url;
+      var note=!ok?'This link needs to start with https://':!ready?'Add a destination above first.':tpl?'Prompt is filled in. Press enter.':'Copies the prompt and opens the site. Paste it in and press enter.';
+      out+='<div class="link-row"><div class="link-main">'+(ok&&ready?'<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer"'+(tpl?'':' data-copy="1"')+'>Open in '+esc(p.name)+' &#8599;</a>':'<a class="off">Open in '+esc(p.name)+'</a>')+'<span>'+note+'</span></div></div>';
+    });
+    if(!state.platforms.length)out+='<div class="hint">No assistants yet. Tap Edit to add one.</div>';
+    if(state.edit){
+      out+='<div class="hint">Put {prompt} in the link where the question should go, like https://example.com/?q={prompt}. Without {prompt}, the app copies the prompt and opens the site so you can paste it.</div>';
+      out+='<form class="add col" data-addpf="1"><div class="two"><input name="pn" type="text" placeholder="Name" aria-label="New assistant name" maxlength="40"><input name="pu" type="text" placeholder="https://...{prompt}" inputmode="url" autocapitalize="off" aria-label="New assistant link"></div><button class="btn" type="submit">Add assistant</button></form>';
+      var have=state.platforms.map(function(p){return p.name.toLowerCase()}),missing=platformDefaults().filter(function(p){return have.indexOf(p.name.toLowerCase())<0});
+      if(missing.length){out+='<div class="pad"><div class="label">Quick add</div><div class="chips" style="margin:0">';missing.forEach(function(p){out+='<button class="chip" data-quickpf="'+p.id+'">+ '+esc(p.name)+'</button>'});out+='</div></div>'}
+      out+='<div class="pad"><button class="btn alt" data-resetpf="1">Reset to defaults</button></div>';
+    }
+    return out;
+  }
+  function renderAI(){
+    var box=$('aiBox'),pr=$('promptBox');
+    if(box)box.innerHTML=aiHTML();
+    if(pr)pr.textContent=buildPrompt();
+    var w=$('dateWarn');if(w)w.textContent=datesBad(tr())?'The return date is before the departure date.':'';
+  }
+  function renderPlan(){
+    var T=tr(),out='<div class="label">Trip details. Type the destination in the big field above.</div><section class="card"><div class="fields">';
+    out+='<div class="field"><label for="start">Depart</label><input id="start" type="date" value="'+esc(T.start)+'" data-field="start"></div>';
+    out+='<div class="field"><label for="end">Return</label><input id="end" type="date" value="'+esc(T.end)+'" min="'+esc(T.start)+'" data-field="end"></div>';
+    out+=stepper('adults','Adults',T.adults)+stepper('kids','Children',T.kids);
+    out+='</div><div class="pad"><div class="warn" id="dateWarn" role="status"></div><div class="label">Getting there</div><div class="chips" style="margin:0 0 12px">';
+    TRANSPORT.forEach(function(x){out+='<button class="chip" data-transport="'+x[0]+'" aria-pressed="'+(T.transport===x[0])+'">'+x[1]+'</button>'});
+    out+='</div><div class="label">What kind of trip</div><div class="chips" style="margin:0 0 12px">';
+    state.interestOpts.forEach(function(x){var on=T.interests.indexOf(x)>-1;if(state.edit)out+='<button class="chip" data-delopt="'+esc(x)+'" aria-label="Remove '+esc(x)+'">'+esc(x)+' &times;</button>';else out+='<button class="chip" data-interest="'+esc(x)+'" aria-pressed="'+on+'">'+(on?'&#10003; ':'+ ')+esc(x)+'</button>'});
+    out+='</div>'+(state.edit?'<form class="add" data-addopt="1" style="margin:0 -14px 12px"><input type="text" placeholder="Add your own, e.g. Photography" aria-label="New trip type" maxlength="30"><button class="btn" type="submit">Add</button></form>':'');
+    out+='<div class="field"><label for="notes">Anything else</label><input id="notes" type="text" maxlength="160" placeholder="Budget, pace, must-sees" value="'+esc(T.notes)+'" data-field="notes"></div></div></section>';
+    out+='<div class="label">Get an itinerary</div><section class="card"><h2>Ask an AI</h2><div id="aiBox"></div><pre class="prompt" id="promptBox"></pre><div class="add"><button class="btn alt" id="copyPrompt" style="flex:1">Copy prompt</button></div></section>';
+    return out;
+  }
+  function xferHTML(){
+    if(!xferResult)return '';
+    var x=xferResult,qr=qrSvg(x.link),out='';
+    out+=qr?'<div class="qr">'+qr+'</div>':'<div class="hint" style="padding:0">Too large for a QR code. Use the link or code, or choose This trip only.</div>';
+    out+='<textarea id="xferLink" rows="3" readonly aria-label="Transfer link">'+esc(x.link)+'</textarea>';
+    out+='<button class="btn alt" data-copylink="1">Copy link</button><button class="btn alt" data-copycode="1">Copy transfer code</button>';
+    if(navigator.share)out+='<button class="btn alt" data-share="1">Share</button>';
+    return out;
+  }
+  function renderMore(){
+    var T=tr(),out='';
+    out+='<div class="label">Move to another device</div><section class="card"><div class="pad" style="padding-top:14px"><div class="chips" style="margin:0 0 12px"><button class="chip" data-scope="trip" aria-pressed="'+(xferScope==='trip')+'">This trip only</button><button class="chip" data-scope="all" aria-pressed="'+(xferScope==='all')+'">Everything</button></div><button class="btn" style="width:100%" data-xfer="1">Create link and QR code</button></div><div class="xfer-out" id="xferOut">'+xferHTML()+'</div><div class="hint">Open the link or scan the QR code on your other device, then choose to add or replace. Links and QR codes work once the app is hosted at its own web address. The transfer code works anywhere.</div><div class="xfer-out"><div class="label" style="margin:0">Have a transfer code, link or saved copy? Paste it here</div><textarea id="importBox" rows="3" placeholder="Paste here" aria-label="Paste a transfer code, link or saved copy"></textarea><button class="btn alt" data-import="1">Receive</button></div></section>';
+    out+='<div class="label">Keep a safe copy</div><section class="card"><div class="actions"><button class="btn alt" data-export="1">Save a copy of my trips</button><label class="btn alt filebtn" for="importFile">Restore from a saved copy</label><input id="importFile" type="file" accept=".json,application/json" class="sr"></div><div class="hint" style="padding-top:0">Your trips live only in this browser. A saved copy protects them if you clear browser data or lose your phone. To restore by pasting instead, use the box above.</div></section>';
+    out+='<div class="label">This trip: '+esc(T.name||'Untitled trip')+'</div><section class="card"><div class="actions"><button class="btn" data-archive="1">Finish and archive trip</button><button class="btn alt" data-uncheck="1">Uncheck everything</button><button class="btn danger" data-deltrip="'+T.id+'">Delete this trip</button></div></section>';
+    out+='<div class="label">About</div><section class="card"><div class="hint">'+esc(APP)+' keeps your trips and lists on this device only. There is no account and no tracking. Your trip details leave this device only when you open an assistant link, which sends the itinerary prompt to that assistant, or when you share a transfer link yourself.</div><div class="hint" style="padding-top:0">Built by Harsha with Claude.</div></section>';
+    return out;
+  }
+  function renderNew(){
+    var T=tr(),list=state.trips.slice().sort(function(a,b){return b.created-a.created});
+    var opts='';list.forEach(function(x){opts+='<option value="'+x.id+'"'+(x.id===T.id?' selected':'')+'>Copy from: '+esc(x.name||'Untitled trip')+(x.archivedAt?' (past)':'')+'</option>'});
+    opts+='<option value="blank">Start blank with default lists</option>';
+    return '<div class="label">Start a new trip</div><section class="card"><div class="fields"><div class="field full"><label for="ntName">Destination (optional)</label><input id="ntName" type="text" maxlength="40" placeholder="Where to?"></div>'+
+      '<div class="field full"><label for="ntSrc">Start from</label><select id="ntSrc">'+opts+'</select></div></div>'+
+      '<div class="hint">Copying keeps your lists, your edits, trip types and group size. Ticks, bookings and dates start fresh, and you can change everything afterward.</div>'+
+      '<div class="add"><button class="btn" data-createtrip="1">Create trip</button><button class="btn alt" data-back="1">Cancel</button></div></section>';
+  }
+  function fmtDates(x){if(x.start&&x.end&&!datesBad(x))return fmtD(x.start)+' to '+fmtD(x.end);return fmtD(x.start)||'No dates'}
+  function renderPast(){
+    var arch=state.trips.filter(function(x){return x.archivedAt}).sort(function(a,b){return b.archivedAt-a.archivedAt});
+    var out='<div class="label">Past trips</div>';
+    if(!arch.length)out+='<div class="card"><div class="empty">No finished trips yet.</div></div>';
+    arch.forEach(function(x){
+      out+='<section class="card"><h2>'+esc(x.name||'Untitled trip')+'<span class="count">'+(x.progress||0)+'% done</span></h2><div class="hint">'+esc(fmtDates(x))+'</div>'+
+        '<div class="actions" style="padding-top:0"><button class="btn" data-clone="'+x.id+'">Plan a new trip like this</button><button class="btn alt" data-reopen="'+x.id+'">Reopen</button><button class="btn danger" data-deltrip="'+x.id+'">Delete</button></div></section>';
+    });
+    out+='<button class="btn alt" data-back="1">Back</button>';
+    return out;
+  }
+
+  function render(){
+    renderHeader();
+    var v=state.tab;
+    view.innerHTML=v==='new'?renderNew():v==='past'?renderPast():v==='plan'?renderPlan():v==='more'?renderMore():v==='book'?renderBook():renderPackHome(v);
+    if(v==='plan')renderAI();
+  }
+
+  function find(id){return tr().sections.filter(function(s){return s.id===id})[0]}
+  var toastTimer;
+  function toast(msg,undoSnap){
+    var h=$('toastHost');
+    h.innerHTML='<div class="toast" role="status"><span>'+esc(msg)+'</span>'+(undoSnap?'<button id="undoBtn">Undo</button>':'')+'</div>';
+    clearTimeout(toastTimer);
+    if(undoSnap)$('undoBtn').onclick=function(){state=JSON.parse(undoSnap);save();h.innerHTML='';render()};
+    toastTimer=setTimeout(function(){h.innerHTML=''},6000);
+  }
+  function mutate(fn){fn();save();render()}
+  function go(tab){endEdit();state.tab=tab;window.scrollTo(0,0)}
+
+  function archiveCurrent(){
+    var T=tr(),snap=JSON.stringify(state);
+    T.archivedAt=Date.now();T.progress=pct(T);
+    var next=state.trips.filter(function(x){return !x.archivedAt})[0],msg;
+    if(next){state.cur=next.id;msg='Archived '+(T.name||'trip')}
+    else{var n=cloneTrip(T);state.trips.push(n);state.cur=n.id;msg='Archived. Started a new trip from your last one.'}
+    endEdit();state.tab='plan';save();render();window.scrollTo(0,0);toast(msg,snap);
+  }
+  function deleteTrip(id){
+    var snap=JSON.stringify(state);
+    state.trips=state.trips.filter(function(x){return x.id!==id});
+    if(!state.trips.some(function(x){return !x.archivedAt})){var b=blankTrip();state.trips.push(b);state.cur=b.id}
+    if(state.tab!=='past')state.tab='plan';
+    save();render();toast('Trip deleted',snap);
+  }
+  function showIncoming(data){
+    var m=migrate(data);
+    if(!m){toast('That does not look like a '+APP+' code or saved copy.');return}
+    pending=m;
+    var names=m.trips.map(function(t){return esc(t.name||'Untitled trip')+(t.archivedAt?' (past)':'')}).join(', ');
+    $('incoming').innerHTML='<section class="card incoming"><h2>'+(m.trips.length===1?'Trip received':'Trips received')+'</h2><div class="hint">'+m.trips.length+(m.trips.length===1?' trip: ':' trips: ')+names+'. Adding keeps what is on this device and updates any trip that is already here. Replacing removes the trips on this device and keeps only what you received.</div><div class="actions" style="padding-top:0"><button class="btn" data-inc="add">Add to my trips</button><button class="btn danger" data-inc="replace">Replace my trips</button><button class="btn alt" data-inc="ignore">Ignore</button></div></section>';
+    window.scrollTo(0,0);
+  }
+  function clearHash(){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+  function applyIncoming(mode){
+    var m=pending;pending=null;$('incoming').innerHTML='';clearHash();
+    if(!m||mode==='ignore')return;
+    var snap=JSON.stringify(state);
+    function mergeExtras(){
+      for(var k in m.memory)if(state.memory[k]===undefined)state.memory[k]=m.memory[k];
+      m.custom.forEach(function(c){if(!state.custom.some(function(x){return x.tpl===c.tpl}))state.custom.push(c)});
+    }
+    if(mode==='replace'&&!m.part){state=m}
+    else if(mode==='replace'){state.trips=m.trips;mergeExtras()}
+    else{
+      m.trips.forEach(function(t){var i=state.trips.map(function(x){return x.id}).indexOf(t.id);if(i>-1)state.trips[i]=t;else state.trips.push(t)});
+      mergeExtras();
+    }
+    delete state.part;
+    var first=m.trips.filter(function(t){return !t.archivedAt})[0];if(first)state.cur=first.id;
+    state.tab='plan';state.edit=false;save();render();toast('Trips updated',snap);
+  }
+  function checkHash(){
+    var h=location.hash||'';
+    if(h.indexOf('#transfer=')===0)importText(h);
+  }
+  async function makeTransfer(){
+    var T=tr(),mem={};
+    T.sections.forEach(function(s){mem[s.tpl]=s.items.map(function(i){return i.text})});
+    var payload=xferScope==='all'?{v:2,cur:state.cur,trips:state.trips,platforms:state.platforms,book:state.book,interestOpts:state.interestOpts,memory:state.memory,custom:state.custom}:{v:2,part:true,trips:[T],memory:mem};
+    var code=await packData(payload);
+    xferResult={code:code,link:baseUrl()+'#transfer='+code};
+    var o=$('xferOut');if(o)o.innerHTML=xferHTML();
+  }
+  function exportJSON(){
+    var txt=JSON.stringify(state,null,1);
+    try{var blob=new Blob([txt],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=APP.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-saved-copy.json';document.body.appendChild(a);a.click();a.remove()}catch(e){}
+    copyText(txt,'Copied to your clipboard. A file may also have downloaded.');
+  }
+  async function importText(txt){
+    txt=(txt||'').trim();
+    var hi=txt.indexOf('#transfer=');if(hi>-1)txt=txt.slice(hi+10);
+    if(/^[zj]\.[A-Za-z0-9_-]+$/.test(txt)){
+      try{showIncoming(await unpackData(txt))}catch(e){toast('That transfer code could not be read.')}
+      return;
+    }
+    if(txt.length>2000000){toast('That is too large to be a '+APP+' saved copy.');return}
+    try{showIncoming(JSON.parse(txt))}catch(e){toast('That does not look like a '+APP+' code or saved copy.')}
+  }
+
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('a[data-copy]');
+    if(a){copyText(buildPrompt(),'Prompt copied. Paste it into your assistant and press enter.');return}
+    var b=e.target.closest('button');if(!b)return;
+    var d=b.dataset,T=tr();
+    if(d.trip){state.cur=d.trip;go('plan');save();render();return}
+    if(d.newtrip){go('new');render();return}
+    if(d.past){go('past');render();return}
+    if(d.back){go('plan');render();return}
+    if(d.createtrip){
+      var src=$('ntSrc').value,nm=$('ntName').value.trim(),from=state.trips.filter(function(x){return x.id===src})[0];
+      var n=from?cloneTrip(from):blankTrip();n.name=nm;
+      state.trips.push(n);state.cur=n.id;go('plan');save();render();
+      toast(from?'New trip created from '+(from.name||'your earlier trip'):'New blank trip created');return;
+    }
+    if(d.archive){archiveCurrent();return}
+    if(d.reopen){var rt=state.trips.filter(function(x){return x.id===d.reopen})[0];if(rt){rt.archivedAt=null;state.cur=rt.id;go('plan');save();render()}return}
+    if(d.clone){var ct=state.trips.filter(function(x){return x.id===d.clone})[0];if(ct){var cn=cloneTrip(ct);state.trips.push(cn);state.cur=cn.id;go('plan');save();render();toast('New trip created from '+(ct.name||'your earlier trip'))}return}
+    if(d.deltrip){deleteTrip(d.deltrip);return}
+    if(d.uncheck){var snapU=JSON.stringify(state);mutate(function(){T.sections.forEach(function(s){s.items.forEach(function(i){i.done=false})});T.booked={}});toast('Everything unchecked',snapU);return}
+    if(d.export){exportJSON();return}
+    if(d.scope){xferScope=d.scope;xferResult=null;render();return}
+    if(d.xfer){makeTransfer();return}
+    if(d.copylink&&xferResult){copyText(xferResult.link,'Link copied');return}
+    if(d.copycode&&xferResult){copyText(xferResult.code,'Transfer code copied');return}
+    if(d.share&&xferResult){try{navigator.share({title:APP+' trip',url:xferResult.link}).catch(function(){})}catch(err){toast('Sharing is not available here. Copy the link instead.')}return}
+    if(d.inc){applyIncoming(d.inc);return}
+    if(d.import){var box=$('importBox');if(box&&box.value.trim())importText(box.value);else toast('Paste a transfer code, link or saved copy first.');return}
+    if(d.tab){mutate(function(){endEdit();state.tab=d.tab});window.scrollTo(0,0);return}
+    if(d.transport){
+      var b4=snapT(T),snapS=JSON.stringify(state);
+      T.transport=T.transport===d.transport?'':d.transport;
+      var notes=smart(T,b4);save();render();
+      if(notes.length)toast(notes.join('. ')+'.',snapS);
+      return;
+    }
+    if(d.interest){mutate(function(){var i=T.interests,k=i.indexOf(d.interest);if(k>-1)i.splice(k,1);else i.push(d.interest)});return}
+    if(b.id==='copyPrompt'){copyText(buildPrompt(),'Prompt copied');return}
+    if(d.delpf){mutate(function(){state.platforms=state.platforms.filter(function(p){return p.id!==d.delpf})});return}
+    if(d.quickpf){var dp=platformDefaults().filter(function(p){return p.id===d.quickpf})[0];if(dp)mutate(function(){state.platforms.push(dp)});return}
+    if(d.resetpf){mutate(function(){state.platforms=platformDefaults()});return}
+    if(d.delopt){mutate(function(){state.interestOpts=state.interestOpts.filter(function(x){return x!==d.delopt});state.trips.forEach(function(t){t.interests=t.interests.filter(function(x){return x!==d.delopt})})});return}
+    if(d.delbk){var bp=d.delbk.split(':'),bg=state.book.filter(function(g){return g.id===bp[0]})[0];if(bg)mutate(function(){bg.rows=bg.rows.filter(function(r){return r.id!==bp[1]})});return}
+    if(d.delgroup){var snapG=JSON.stringify(state),gg=state.book.filter(function(g){return g.id===d.delgroup})[0];mutate(function(){state.book=state.book.filter(function(g){return g.id!==d.delgroup})});toast('Removed '+(gg?gg.title:'group'),snapG);return}
+    if(d.tog){var p=d.tog.split(':'),s=find(p[0]);if(!s)return;var i=s.items.filter(function(x){return x.id===p[1]})[0];if(i)mutate(function(){i.done=!i.done});return}
+    if(d.book){mutate(function(){T.booked[d.book]=!T.booked[d.book]});return}
+    if(d.resetbook){var snapB=JSON.stringify(state);mutate(function(){state.book=defaultBook()});toast('Links reset to defaults',snapB);return}
+    if(d.skip){mutate(function(){T.skip[d.skip]=!T.skip[d.skip]});return}
+    if(d.delcustom){
+      var snapC=JSON.stringify(state),ctpl=tplByKey(d.delcustom);
+      mutate(function(){
+        state.custom=state.custom.filter(function(c){return c.tpl!==d.delcustom});
+        state.trips.forEach(function(x){if(!x.archivedAt)x.sections=x.sections.filter(function(s){return s.tpl!==d.delcustom})});
+        delete state.memory[d.delcustom];
+      });
+      toast('Deleted '+(ctpl?ctpl.title:'list'),snapC);return;
+    }
+    if(d.del){var q=d.del.split(':'),s2=find(q[0]);if(s2)mutate(function(){s2.items=s2.items.filter(function(x){return x.id!==q[1]})});return}
+    if(d.resetsec){var rs=find(d.resetsec),rt2=rs&&builtin(rs.tpl);if(rt2)mutate(function(){rs.items=rt2.items.map(it)});return}
+    if(d.rmsec){var snap=JSON.stringify(state),sec=find(d.rmsec);mutate(function(){T.sections=T.sections.filter(function(x){return x.id!==d.rmsec})});toast('Removed '+(sec?sec.title:'list')+' from this trip',snap);return}
+    if(d.tpl){
+      var existing=T.sections.filter(function(s){return s.tpl===d.tpl})[0],t=tplByKey(d.tpl);
+      if(existing){var snap2=JSON.stringify(state);mutate(function(){T.sections=T.sections.filter(function(s){return s.tpl!==d.tpl})});toast('Removed '+t.title+' from this trip',snap2)}
+      else mutate(function(){T.sections.push(makeSection(t))});
+      return;
+    }
+    if(b.id==='editBtn'){mutate(function(){if(state.edit)endEdit();else state.edit=true});return}
+    if(b.id==='copyBtn'){
+      var lines=[(T.name||'Trip')+' checklist'];
+      if(T.start)lines.push(fmtDates(T));
+      var bk=state.book.filter(function(g){return g.rows.length&&!T.skip[g.id]});
+      if(bk.length){lines.push('');lines.push('BOOKINGS');bk.forEach(function(g){
+        var w=g.rows.filter(function(r){return T.booked[r.id]}).map(function(r){return r.name});
+        lines.push((w.length?'[x] ':'[ ] ')+g.title+(w.length?' ('+w.join(', ')+')':''));
+      })}
+      T.sections.forEach(function(s){lines.push('');lines.push(s.title.toUpperCase());s.items.forEach(function(i){lines.push((i.done?'[x] ':'[ ] ')+i.text)})});
+      copyText(lines.join('\n'),'Checklist copied');
+      return;
+    }
+  });
+  document.addEventListener('submit',function(e){
+    e.preventDefault();
+    var f=e.target,T=tr();
+    var fix=function(u){u=u.trim();return /^https?:\/\//i.test(u)?u:'https://'+u};
+    if(f.hasAttribute('data-addpf')){var pn=f.elements['pn'].value.trim(),pu=f.elements['pu'].value.trim();if(!pn||!pu)return;mutate(function(){state.platforms.push({id:uid(),name:pn,url:fix(pu)})});return}
+    if(f.hasAttribute('data-addbk')){var bn=f.elements['bn'].value.trim(),bu=f.elements['bu'].value.trim(),gb=state.book.filter(function(g){return g.id===f.dataset.addbk})[0];if(!bn||!bu||!gb)return;mutate(function(){gb.rows.push({id:uid(),name:bn,note:'',url:fix(bu)})});return}
+    var inp=f.querySelector('input'),v=inp.value.trim();
+    if(!v)return;
+    if(f.dataset.add){var s=find(f.dataset.add);if(s)mutate(function(){s.items.push(it(v))});var n=view.querySelector('[data-add="'+f.dataset.add+'"] input');if(n)n.focus()}
+    else if(f.hasAttribute('data-addgroup')){mutate(function(){state.book.push({id:uid(),title:v,rows:[]})})}
+    else if(f.hasAttribute('data-addopt')){mutate(function(){if(state.interestOpts.indexOf(v)<0)state.interestOpts.push(v)})}
+    else if(f.dataset.newsec){mutate(function(){var k='custom-'+uid();state.custom.push({tpl:k,group:f.dataset.newsec,title:v});T.sections.push({id:uid(),tpl:k,group:f.dataset.newsec,title:v,items:[]})})}
+  });
+  document.addEventListener('input',function(e){
+    var t=e.target,T=tr();
+    if(t.dataset&&t.dataset.pf){var pp=t.dataset.pf.split(':'),pl=state.platforms.filter(function(x){return x.id===pp[0]})[0];if(pl){pl[pp[1]]=t.value;save()}return}
+    if(t.dataset&&t.dataset.bk){var bk=t.dataset.bk.split(':'),gx=state.book.filter(function(g){return g.id===bk[0]})[0],rx=gx&&gx.rows.filter(function(r){return r.id===bk[1]})[0];if(rx){rx[bk[2]]=t.value;save()}return}
+    if(t.dataset&&t.dataset.gt){var gt=state.book.filter(function(g){return g.id===t.dataset.gt})[0];if(gt){gt.title=t.value;save()}return}
+    if(t.id==='tripName'){T.name=t.value;save();renderHeader();if(state.tab==='plan')renderAI();return}
+    if(t.dataset&&t.dataset.field){
+      var f=t.dataset.field,b5=snapT(T),snapF=JSON.stringify(state);
+      if(f==='adults'||f==='kids'){var n=parseInt(t.value,10);T[f]=isNaN(n)?0:Math.max(0,Math.min(20,n))}
+      else T[f]=t.value;
+      var notes2=smart(T,b5);
+      save();renderHeader();renderAI();
+      if(notes2.length)toast(notes2.join('. ')+'.',snapF);
+      return;
+    }
+    if(t.dataset&&t.dataset.edit){var p=t.dataset.edit.split(':'),s=find(p[0]);if(!s)return;var i=s.items.filter(function(x){return x.id===p[1]})[0];if(i){i.text=t.value;save()}}
+  });
+
+  document.addEventListener('change',function(e){
+    if(e.target.id==='importFile'&&e.target.files&&e.target.files[0]){
+      var r=new FileReader();r.onload=function(){importText(String(r.result))};r.readAsText(e.target.files[0]);
+    }
+  });
+  window.addEventListener('hashchange',checkHash);
+  tidy();
+  render();
+  checkHash();
+})();
+</script>
+<script>
+/* Offline support: keeps a copy of the app on the device after the first visit. */
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
