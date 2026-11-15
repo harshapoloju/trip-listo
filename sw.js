@@ -1,5 +1,5 @@
 /* Trip Listo offline support. Change CACHE when you publish a new version so phones pick it up. */
-var CACHE='trip-listo-v1';
+var CACHE='trip-listo-v2';
 var ASSETS=[
  "./",
  "index.html",

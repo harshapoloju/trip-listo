@@ -216,6 +216,7 @@ form.card.add{border-top:1px solid var(--line)}
     {tpl:'hiking',group:'pack',title:'Hiking and camping',items:['Backpack','Hiking shoes','Extra socks','Rain jacket','Warm layers / fleece','Headlamp','First-aid kit','Trail snacks','Sunscreen and bug spray','Offline trail map','Bear spray (where needed)']},
     {tpl:'flying',group:'pack',title:'Flying',items:['Passport or government ID','Boarding pass','Travel adapter','Power bank','Neck pillow','Liquids in a clear bag (100 ml / 3.4 oz each)','Headphones']},
     {tpl:'road',group:'pack',title:'Road trip',items:['Driver\'s license','Car insurance and registration','Check the spare tire and jack','Phone mount and car charger','Cooler and snacks','Playlists and podcasts downloaded','Cash for tolls and park fees']},
+    {tpl:'transit',group:'pack',title:'Train or bus',items:['Tickets or pass (saved offline on my phone)','Photo ID','Check the departure station or stop and platform','Seat reservation confirmed','Snacks and a refillable water bottle','Headphones and downloaded shows or music','Power bank and short charging cable','Small day bag for things I need on board','Layer for cold air conditioning','Cash or card for local transit']},
     {tpl:'beach',group:'pack',title:'Beach and pool',items:['Swimsuit','Towel','Flip-flops','Sunscreen','Hat','Dry bag']},
     {tpl:'kids',group:'pack',title:'With kids',items:['Snacks','Spare clothes','Wipes and diapers','Favorite toy or comfort item','Tablet and headphones','Kids\' medications']},
     {tpl:'work',group:'home',title:'Work and time off',items:['Apply for leave (PTO) and get it approved','Set an out-of-office auto-reply','Hand off urgent tasks to a teammate','Share dates and a contact plan with my manager','Decide: take the office laptop or leave it','If taking it: pack the laptop and charger','Decline or move meetings during the trip']},
@@ -403,7 +404,7 @@ form.card.add{border-top:1px solid var(--line)}
   function smart(T,before){
     var notes=[];
     if(noFly(T)!==before.noFly)setSkip(T,grp('flights'),noFly(T),'Flights',notes);
-    if(T.transport!==before.transport){setList(T,'road',T.transport==='drive',notes);setList(T,'flying',T.transport==='fly',notes)}
+    if(T.transport!==before.transport){setList(T,'road',T.transport==='drive',notes);setList(T,'flying',T.transport==='fly',notes);setList(T,'transit',T.transport==='train',notes)}
     if(sameDay(T)!==before.sameDay)setSkip(T,grp('stay'),sameDay(T),'Stay',notes);
     if((T.kids>0)!==before.kids)setList(T,'kids',T.kids>0,notes);
     return notes;
