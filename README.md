@@ -69,9 +69,9 @@ so phones that installed the app pick up the update.
 | File | What it is |
 | --- | --- |
 | `index.html` | The whole app |
-| `manifest.webmanifest`, `icons/` | Name and icons for installing it |
+| `manifest.webmanifest`, `icon-*.png`, `favicon.svg` | Name and icons for installing it |
 | `sw.js` | Offline support |
-| `fonts/`, `vendor/` | Bundled fonts and the QR code library |
+| `*.woff2`, `fonts.css`, `qrcode.js` | Bundled fonts and the QR code library |
 
 ## Credits
 

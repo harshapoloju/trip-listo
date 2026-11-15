@@ -4,10 +4,10 @@ Trip Listo bundles a few open-source files so it works offline.
 
 | What | Where | License |
 | --- | --- | --- |
-| Bodoni Moda (font) | `fonts/bodoni-moda-*.woff2` | SIL Open Font License 1.1 |
-| Hanken Grotesk (font) | `fonts/hanken-grotesk-*.woff2` | SIL Open Font License 1.1 |
-| DM Mono (font) | `fonts/dm-mono-*.woff2` | SIL Open Font License 1.1 |
-| qrcode-generator by Kazuhiko Arase | `vendor/qrcode.js` | MIT (notice is at the top of the file) |
+| Bodoni Moda (font) | `bodoni-moda-*.woff2` | SIL Open Font License 1.1 |
+| Hanken Grotesk (font) | `hanken-grotesk-*.woff2` | SIL Open Font License 1.1 |
+| DM Mono (font) | `dm-mono-*.woff2` | SIL Open Font License 1.1 |
+| qrcode-generator by Kazuhiko Arase | `qrcode.js` | MIT (notice is at the top of the file) |
 
 The font files come from the Fontsource packages `@fontsource/bodoni-moda`,
 `@fontsource/hanken-grotesk` and `@fontsource/dm-mono`. The full text of the
